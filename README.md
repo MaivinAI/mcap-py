@@ -8,5 +8,7 @@ pip install -r requirements.txt
 ``` 
 ### Run the Script
 ```bash
-python mcap_parser.py -f <path_to_mcap_file>
+python mcap_parser.py <path_to_mcap_file>
 ``` 
+
+Commercial Support is provided by Au-Zone Technologies through the [DeepView Support](https://support.deepviewml.com) site.
