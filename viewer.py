@@ -1,10 +1,10 @@
+
 import argparse  
 import io
 import av  
 import numpy as np  
 import cv2  
 import logging  
-import sys
 from mcap.reader import make_reader
 from edgefirst.schemas.CameraInfo import CameraInfo as Info  # Custom message module for camera information  
 from edgefirst.schemas.ImageAnnotation import ImageAnnotation as Boxes  # Custom message module for image annotations
@@ -17,12 +17,9 @@ logger = logging.getLogger(__name__)  # Create a logger object
 
 # Initialize an input/output buffer for storing raw data
 rawData = io.BytesIO()
-
 # Open the AV container to parse H.264 video format
-syserr = sys.stderr
-sys.stdout = None
 container = av.open(rawData, format="h264", mode='r')
-# sys.stderr = syserr
+
 # Default frame dimensions
 frame_height = 1080
 frame_width = 1920
@@ -193,7 +190,7 @@ def visualizer(mcap_file, model, scale, thickness, display_bbox, custom, scale_n
                     if mcap_image is not None:  # Check if image is available
                         mcap_image = cv2.resize(mcap_image, (frame_width, frame_height))  # Resize the image
                         if model:  # Check if a model is provided
-                            run_model(mcap_image, model, thickness)  # Run object detection model
+                            mcap_image = run_model(mcap_image, model, thickness)  # Run object detection model
                         key = show_image(frame_id, mcap_image, key)  # Show the image and get the key pressed by the user
     except Exception as e:  
         logger.error("Error in visualizer: %s", e)  
