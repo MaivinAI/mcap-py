@@ -1,0 +1,7 @@
+tensorflow
+mcap
+onnxruntime==1.16
+opencv-python
+numpy
+av
+edgefirst-schemas
