@@ -138,13 +138,13 @@ def draw_custom_bbox(message, boxes_map, frame_time, mcap_image, scale, display_
                 y = int((points.center_y - points.height / 2) * frame_height/scale)
                 w = int(points.width * frame_width/scale)
                 h = int(points.height * frame_height/scale)
-                if display_bbox.lower() == "yes":
+                if display_bbox:
                     cv2.rectangle(mcap_image, (x, y), (x + w, y + h), (255, 0, 0), thickness) # Draw a bounding box on the image
     except:
         logger.warning("Error in deserializing custom boxes, just showing Image")
 
 # Function to draw foxglove boxes
-def draw_foxglove_bbox(message, boxes_map, frame_time, mcap_image, display_bbox,thickness):
+def draw_foxglove_bbox(message, boxes_map, frame_time, mcap_image, display_bbox, thickness):
     try:
         boxes = Boxes.deserialize(message.data)  # Deserialize the message data to get bounding boxes
         box_time = boxes.points[0].timestamp.sec + (boxes.points[0].timestamp.nanosec / 1e9) # Get the box time
@@ -158,7 +158,7 @@ def draw_foxglove_bbox(message, boxes_map, frame_time, mcap_image, display_bbox,
                 min_y = min(point[1] for point in box_points)  # Get minimum Y coordinate
                 max_x = max(point[0] for point in box_points)  # Get maximum X coordinate
                 max_y = max(point[1] for point in box_points)  # Get maximum Y coordinate
-                if display_bbox.lower() == "yes":
+                if display_bbox:
                     cv2.rectangle(mcap_image, (min_x, min_y), (max_x, max_y), (255, 0, 0), thickness) # Draw a bounding box on the image
     except:
         logger.warn("Error in deserializing foxglove boxes, just showing Image")
@@ -184,9 +184,9 @@ def visualizer(mcap_file, model, scale, thickness, display_bbox, custom, scale_n
                     
                 if channel.topic == "/detect/boxes2d":  # Check if the topic is 2D bounding boxes
                     if custom:
-                        draw_custom_bbox(message, boxes_map, frame_time, mcap_image, scale, display_bbox,thickness)
+                        draw_custom_bbox(message, boxes_map, frame_time, mcap_image, scale, display_bbox, thickness)
                     else: 
-                        draw_foxglove_bbox(message, boxes_map, frame_time, mcap_image, display_bbox,thickness)
+                        draw_foxglove_bbox(message, boxes_map, frame_time, mcap_image, display_bbox, thickness)
                     if mcap_image is not None:  # Check if image is available
                         mcap_image = cv2.resize(mcap_image, (frame_width, frame_height))  # Resize the image
                         if model:  # Check if a model is provided
@@ -203,8 +203,8 @@ def main():
     parser.add_argument('mcap_file', type=str, help='MCAP that needs to be parsed') # Add MCAP file argument
     parser.add_argument('-s', '--scale', type=float, default=1.0, help='Resizing factor to view the final image 0.1-1.0. Default: 1.0')  # Add scale argument
     parser.add_argument('-t', '--thickness', type=int, default=2, help='Choose the thickness of the bounding box. Default: 2')  # Add thickness argument
-    parser.add_argument('-b', '--display_bbox', type=str, default="yes", help='Choose to view the bounding box [yes, no]. Default: yes') # Gives an option to display the Bounding Boxes
-    parser.add_argument('-c', '--custom', action='store_true', help='Choose to view the bounding box. Default: False') # Allows user swtitch between custom and foxglove schema
+    parser.add_argument('-b', '--display_bbox', action='store_true', help='Choose to view the bounding box. Default: False') # Gives an option to display the Bounding Boxes
+    parser.add_argument('-c', '--custom', action='store_true', help='Choose to view the kind of bounding box [Custom Boxes, Foxglove Boxes]. Default: False') # Allows user swtitch between custom and foxglove schema
     opt = parser.parse_args()  # Parse command-line arguments
 
     scale_not_set = True  # Flag to check if scale is initially set
