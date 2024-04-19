@@ -6,10 +6,10 @@ import numpy as np
 import cv2  
 import logging  
 from mcap.reader import make_reader
-from edgefirst.schemas.CameraInfo import CameraInfo as Info  # Custom message module for camera information  
-from edgefirst.schemas.ImageAnnotation import ImageAnnotation as Boxes  # Custom message module for image annotations
-from edgefirst.schemas.CompressedVideo import CompressedVideo  # Custom message module for H264 decoding 
-from edgefirst.schemas.Detect import Detect # Custom message module for detection
+from edgefirst.schemas.sensor_msgs import CameraInfo as Info  # Custom message module for camera information  
+from edgefirst.schemas.foxglove_msgs import ImageAnnotations as Boxes  # Custom message module for image annotations
+from edgefirst.schemas.foxglove_msgs import CompressedVideo  # Custom message module for H264 decoding 
+from edgefirst.schemas.edgefirst_msgs import Detect # Custom message module for detection
 
 # Initialize logger
 logging.basicConfig(level=logging.INFO)  # Set up logging configuration
@@ -139,7 +139,7 @@ def draw_custom_bbox(message, boxes_map, frame_time, mcap_image, scale, display_
                 w = int(points.width * frame_width/scale)
                 h = int(points.height * frame_height/scale)
                 if display_bbox.lower() == "yes":
-                    cv2.rectangle(mcap_image, (x, y), (x + w, y + h), (255, 0, 0), thickness)# Draw a bounding box on the image
+                    cv2.rectangle(mcap_image, (x, y), (x + w, y + h), (255, 0, 0), thickness) # Draw a bounding box on the image
     except:
         logger.warning("Error in deserializing custom boxes, just showing Image")
 
@@ -159,7 +159,7 @@ def draw_foxglove_bbox(message, boxes_map, frame_time, mcap_image, display_bbox,
                 max_x = max(point[0] for point in box_points)  # Get maximum X coordinate
                 max_y = max(point[1] for point in box_points)  # Get maximum Y coordinate
                 if display_bbox.lower() == "yes":
-                    cv2.rectangle(mcap_image, (min_x, min_y), (max_x, max_y), (255, 0, 0), thickness)# Draw a bounding box on the image
+                    cv2.rectangle(mcap_image, (min_x, min_y), (max_x, max_y), (255, 0, 0), thickness) # Draw a bounding box on the image
     except:
         logger.warn("Error in deserializing foxglove boxes, just showing Image")
 
@@ -200,7 +200,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Process MCAP to view images with bounding boxes.')  # Create an argument parser
     parser.add_argument('-m', '--model', nargs='?', const=True, default=False, help='Run the frame through a custom model to display bounding box. Specify the model name after --model. Default: False')  # Add model argument
-    parser.add_argument('-f', '--mcap_file', type=str, required=True, help='MCAP that needs to be parsed')  # Add MCAP file argument
+    parser.add_argument('mcap_file', type=str, help='MCAP that needs to be parsed') # Add MCAP file argument
     parser.add_argument('-s', '--scale', type=float, default=1.0, help='Resizing factor to view the final image 0.1-1.0. Default: 1.0')  # Add scale argument
     parser.add_argument('-t', '--thickness', type=int, default=2, help='Choose the thickness of the bounding box. Default: 2')  # Add thickness argument
     parser.add_argument('-b', '--display_bbox', type=str, default="yes", help='Choose to view the bounding box [yes, no]. Default: yes') # Gives an option to display the Bounding Boxes

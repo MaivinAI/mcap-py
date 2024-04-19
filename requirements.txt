@@ -4,4 +4,4 @@ onnxruntime==1.16
 opencv-python
 numpy
 av
-git+https://github.com/MaivinAI/schemas.git@edgefirstDetect
+git+https://github.com/MaivinAI/schemas
