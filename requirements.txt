@@ -1,0 +1,7 @@
+tensorflow
+mcap
+onnxruntime==1.16
+opencv-python
+numpy
+av
+git+https://github.com/MaivinAI/schemas
