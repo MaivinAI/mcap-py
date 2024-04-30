@@ -1,8 +1,8 @@
-tensorflow
-mcap
+tensorflow==2.16.1
+mcap==1.1.1
 onnxruntime==1.16
 opencv-python==4.6.0.66
-numpy
+numpy==1.26.4
 av==11.0.0
-matplotlib
+matplotlib==3.5.3
 edgefirst-schemas==1.1.1
