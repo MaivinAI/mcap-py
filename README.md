@@ -8,7 +8,7 @@ pip install -r requirements.txt
 ``` 
 ### Run the Script
 ```bash
-python mcap_parser.py <path_to_mcap_file>
+python viewer.py <path_to_mcap_file>
 ``` 
 # License
 

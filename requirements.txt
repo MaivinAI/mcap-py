@@ -1,7 +1,8 @@
 tensorflow
 mcap
 onnxruntime==1.16
-opencv-python
+opencv-python==4.6.0.66
 numpy
-av
-git+https://github.com/MaivinAI/schemas
+av==11.0.0
+matplotlib
+edgefirst-schemas==1.1.1

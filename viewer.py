@@ -5,6 +5,7 @@ import av
 import numpy as np  
 import cv2  
 import logging  
+import matplotlib.pyplot as plt
 from mcap.reader import make_reader
 from edgefirst.schemas.sensor_msgs import CameraInfo as Info  # Custom message module for camera information  
 from edgefirst.schemas.foxglove_msgs import ImageAnnotations as Boxes  # Custom message module for image annotations
@@ -96,16 +97,18 @@ def run_model(mcap_image, model, thickness):
 # Function to display the image
 def show_image(frame_id, mcap_image, key):
     try:
-        # Display the image
-        if key is not None and key == 27:  # Check if ESC key is pressed
-            exit()  # Exit the program if ESC key is pressed
-        cv2.imshow("frame " + str(frame_id), mcap_image)  # Show the image
-        key = cv2.waitKey(0)  # Wait for a key press
-        cv2.destroyAllWindows()  # Close all OpenCV windows
-    except Exception as e:  
-        logger.error("Error displaying image: %s", e)  
-    return key  # Return the key pressed by the user
-
+        rgb_image = cv2.cvtColor(mcap_image, cv2.COLOR_BGR2RGB) # Fix color representation
+        plt.imshow(rgb_image)  # Display the corrected image using matplotlib
+        plt.axis('off')  # Turn off axis
+        plt.title(f"Frame {frame_id}")  # Set title
+        plt.show()  # Show the image
+    except KeyboardInterrupt:
+        print("Exiting...")
+        exit()
+    except Exception as e:
+        print("Error displaying image:", e)
+    return key
+    
 # Function to set the image size based on camera information
 def set_image_size(message, scale):
     global frame_height  # Access the global variable
