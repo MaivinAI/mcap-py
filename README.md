@@ -4,6 +4,7 @@ The python app allows user to parse MCAP files; View each H264 frame using OpenC
 ### Install Python Dependencies
 
 ```bash
+sudo apt install python-tk
 pip install -r requirements.txt
 ``` 
 ### Run the Script
