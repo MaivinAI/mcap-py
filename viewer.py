@@ -1,4 +1,3 @@
-
 import argparse  
 import io
 import av  
@@ -209,7 +208,7 @@ def main():
     parser.add_argument('mcap_file', type=str, help='MCAP that needs to be parsed') # Add MCAP file argument
     parser.add_argument('-s', '--scale', type=float, default=1.0, help='Resizing factor to view the final image 0.1-1.0. Default: 1.0')  # Add scale argument
     parser.add_argument('-t', '--thickness', type=int, default=2, help='Choose the thickness of the bounding box. Default: 2')  # Add thickness argument
-    parser.add_argument('-b', '--display_bbox', action='store_true', default=True, help='Choose to view the bounding box. Default: True') # Gives an option to display the Bounding Boxes
+    parser.add_argument('-b', '--display_bbox', action='store_true', help='Choose to view the bounding box. Default: False') # Gives an option to display the Bounding Boxes
     parser.add_argument('-c', '--custom', action='store_true', help='Choose to view the kind of bounding box [Custom Boxes, Foxglove Boxes]. Default: False') # Allows user swtitch between custom and foxglove schema
     opt = parser.parse_args()  # Parse command-line arguments
 
