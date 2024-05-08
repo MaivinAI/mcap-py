@@ -5,4 +5,4 @@ opencv-python==4.6.0.66
 numpy==1.26.4
 av==11.0.0
 matplotlib==3.5.3
-edgefirst-schemas==1.1.1
+edgefirst-schemas==1.2.0
