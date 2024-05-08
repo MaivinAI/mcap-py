@@ -1,4 +1,3 @@
-
 import argparse  
 import io
 import av  
@@ -172,20 +171,23 @@ def visualizer(mcap_file, model, scale, thickness, display_bbox, custom, scale_n
     key, mcap_image = None, None  # Initialize key and image variables
     frame_time = 0 # Stores the time when the frame was recived to sync with the boxes
     boxes_map = {} # Creates a hash of the boxes to match with frame time 
+    boxes_topic = "/detect/visualization"
     try:
+        if custom:
+            boxes_topic = "/detect/boxes2d"
         with open(mcap_file, "rb") as f:  # Open the MCAP file for reading
             reader = make_reader(f)  # Create a reader object for reading messages
             for schema, channel, message in reader.iter_messages():  # Iterate over messages in the file
                 if channel.topic == "/camera/info" and scale_not_set:  # Check if camera info and scale are not set
                     scale_not_set = set_image_size(message, scale)  # Set the image size based on camera info
-                
+                    
                 if channel.topic == "/camera/h264":  # Check if the topic is camera H.264
                     frame_id = frame_id + 1  # Increment frame ID
                     image_data =  CompressedVideo.deserialize(message.data) # Deserialize the message data to get H264 frames
                     frame_time = image_data.timestamp.sec + (image_data.timestamp.nanosec / 1e9) # Get the frame time
                     mcap_image = get_image(bytes(image_data.data), frame_position)  # Get the image frame from the message
-                    
-                if channel.topic == "/detect/boxes2d":  # Check if the topic is 2D bounding boxes
+                
+                if channel.topic == boxes_topic:  # Check if the topic is 2D bounding boxes
                     if custom:
                         draw_custom_bbox(message, boxes_map, frame_time, mcap_image, scale, display_bbox, thickness)
                     else: 
