@@ -7,6 +7,8 @@ import av
 import numpy as np
 import rerun as rr
 import logging
+import tqdm
+import sys
 from mcap.reader import make_reader
 # Custom message module for camera information
 from edgefirst.schemas.sensor_msgs import CameraInfo as Info
@@ -35,6 +37,9 @@ def init_h264():
         pass
     rawData = io.open("tmp.h264", "a+b")
     # Open the AV container to parse H.264 video format
+
+    # Block errors/warnings resulting from lack of keyframes
+    av.logging.set_level(av.logging.PANIC)
     container = av.open("tmp.h264", format="h264", mode='r')
 
 
@@ -71,7 +76,11 @@ def get_image(message, frame_position):
                 mcap_image = frame
 
         except Exception as e:
-            logger.warning("Ubable to decode frame: %s", e)
+            if "Errno 1094995529" not in str(e):
+                logger.warning("Unable to decode frame: %s", e)
+            else:
+                # error due to not starting with a keyframe
+                pass
             continue
     return mcap_image  # Return the decoded image
 
@@ -308,8 +317,12 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                 ),
                 static=True,
             )
-            # Iterate over messages in the file
+            count = 0
             for schema, channel, message in reader.iter_messages():
+                count += 1
+
+            # Iterate over messages in the file
+            for schema, channel, message in tqdm.tqdm(reader.iter_messages(), total=count):
                 if channel.topic == "/camera/h264":  # Check if the topic is camera H.264
                     frame_id = frame_id + 1  # Increment frame ID
                     # Deserialize the message data to get H264 frames
