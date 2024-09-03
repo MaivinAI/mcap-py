@@ -7,4 +7,4 @@ av==11.0.0
 matplotlib==3.5.3
 edgefirst-schemas==1.2.2
 rerun-sdk==0.17
-
+zstandard==0.23.0

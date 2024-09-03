@@ -9,6 +9,7 @@ import rerun as rr
 import logging
 import tqdm
 import sys
+import zstandard
 from mcap.reader import make_reader
 # Custom message module for camera information
 from edgefirst.schemas.sensor_msgs import CameraInfo as Info
@@ -18,13 +19,15 @@ from edgefirst.schemas.foxglove_msgs import CompressedVideo
 # Custom message module for detection
 from edgefirst.schemas.edgefirst_msgs import Mask
 import struct
-
+import traceback
+import io
 # Initialize logger
 logging.basicConfig(level=logging.INFO)  # Set up logging configuration
 logger = logging.getLogger(__name__)  # Create a logger object
 
 rawData = None
 container = None
+zstd_decomp = zstandard.ZstdDecompressor()
 
 
 def init_h264():
@@ -416,6 +419,14 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                 if channel.topic == "/detect/mask":
                     msg = Mask.deserialize(message.data)
                     mask = msg.mask
+                    if msg.encoding == "zstd":
+                        mask = zstd_decomp.decompress(bytes(mask))
+                        mask = [x for x in mask]
+                    elif msg.encoding == "":
+                        pass
+                    else:
+                        logger.error(
+                            f"Unknown encoding type {msg.encoding} in mask")
                     mask = np.asarray(mask, dtype=np.uint8)
                     mask = mask.reshape((msg.height, msg.width, -1))
                     last_mask = mask
@@ -426,8 +437,11 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                     rr.log("3d/video/mask", rr.SegmentationImage(mask))
                     rr.log("3d/mask", rr.SegmentationImage(mask))
 
-    except FileNotFoundError as e:
-        logger.error("Error in visualizer: %s", e)
+    except Exception as e:
+        tb = io.StringIO()
+        traceback.print_tb(e.__traceback__, 10, tb)
+        tb.seek(0)
+        logger.error(f"Error in visualizer: {e}\nTraceback:\n{tb.read()}")
 
         # Main function to parse command-line arguments and start visualization
 
