@@ -340,7 +340,7 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                         bytes(image_data.data), frame_position)
 
                     if mcap_image:
-                        image = mcap_image.to_ndarray(format="rgb24")
+                        image = mcap_image.to_ndarray(format="bgr24")
                         image = cv2.resize(image, dsize=(
                             frame_width, frame_height), interpolation=cv2.INTER_LINEAR)
                         res, image = cv2.imencode(".jpg", image)
