@@ -259,7 +259,10 @@ class Points3D():
     y: float
     z: float
     class_: int
-    fields = {}
+    fields: dict
+
+    def __init__(self):
+        self.fields = dict()
 
 
 def make_blueprint():
