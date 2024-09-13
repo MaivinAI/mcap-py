@@ -324,10 +324,41 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                 static=True,
             )
             count = 0
+            speeds = []
             for schema, channel, message in reader.iter_messages():
                 count += 1
+                if channel.topic == "/radar/targets":
+                    # Default code for decoding /radar/targets
+                    radar_data = PointCloud2.deserialize(message.data)
+                    endian_format = ">" if radar_data.is_bigendian else "<"
+                    for i in range(radar_data.height):
+                        for j in range(radar_data.width):
+                            point_start = \
+                                (i*radar_data.width+j) * radar_data.point_step
+                            for f in radar_data.fields:
+                                f: PointField = f
+                                val = 0
+                                if f.datatype == PointFieldDatatype.FLOAT32.value:
+                                    arr = bytearray(
+                                        radar_data.data[(point_start + f.offset):(point_start + f.offset + 4)])
+                                    val = struct.unpack(
+                                        f'{endian_format}f', arr)[0]
+                                elif f.datatype == PointFieldDatatype.FLOAT64.value:
+                                    arr = bytearray(
+                                        radar_data.data[(point_start + f.offset):(point_start + f.offset + 4)])
+                                    val = struct.unpack(
+                                        f'{endian_format}f', arr)[0]
+                                else:
+                                    logger.warning(
+                                        "Found non float xyz data in points field. Integer parsing not supported yet")
+                                if f.name == 'speed':
+                                    speeds.append(abs(val))
 
-            # Iterate over messages in the file
+            # Determine normalization coefficents for speed
+            max_speed = max(speeds)
+            min_speed = min(speeds)
+            speed_color_mult = 255 / (max_speed - min_speed)
+
             for schema, channel, message in tqdm.tqdm(reader.iter_messages(), total=count):
                 if channel.topic == "/camera/h264":  # Check if the topic is camera H.264
                     frame_id = frame_id + 1  # Increment frame ID
@@ -414,6 +445,11 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                         size_2d[:, 0] /= mask_width/frame_width
                         centers_2d[:, 1] /= mask_height/frame_height
                         size_2d[:, 1] /= mask_height/frame_height
+
+                    # Determine colour by speed field. 
+                    colors = [(int((p.fields["speed"] - min_speed) * speed_color_mult),
+                               int((p.fields["speed"] - min_speed) * speed_color_mult), 
+                               int((p.fields["speed"] - min_speed) * speed_color_mult)) for p in radar_points]
                     rr.log("3d/video/points",
                            rr.Points2D(positions=centers_2d, radii=size_2d[:, 0]/2, colors=colors))
                     rr.log("3d/radar", rr.Points3D(
