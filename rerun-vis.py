@@ -357,8 +357,10 @@ def visualizer(mcap_file, image_scaling, rerun_file):
             # Determine normalization coefficents for speed
             max_speed = max(speeds)
             min_speed = min(speeds)
-            min_speed_color_mult = 255 / (min_speed)
-            max_speed_color_mult = 255 / (max_speed)
+            if abs(max_speed) > abs(min_speed):
+                speed_color_mult = 255 / (abs(max_speed))
+            else:
+                speed_color_mult = 255 / (abs(min_speed))
 
             for schema, channel, message in tqdm.tqdm(reader.iter_messages(), total=count):
                 if channel.topic == "/camera/h264":  # Check if the topic is camera H.264
@@ -451,9 +453,9 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                     colors = []
                     for p in radar_points:
                         if p.fields["speed"] < 0:
-                            colors.append((0, 0, int((p.fields["speed"]) * min_speed_color_mult)))
+                            colors.append((0, 0, int((p.fields["speed"]) * -speed_color_mult)))
                         else:
-                            colors.append((int((p.fields["speed"]) * max_speed_color_mult), 0, 0))
+                            colors.append((int((p.fields["speed"]) * speed_color_mult), 0, 0))
                     rr.log("3d/video/points",
                            rr.Points2D(positions=centers_2d, radii=size_2d[:, 0]/2, colors=colors))
                     rr.log("3d/radar", rr.Points3D(
