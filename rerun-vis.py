@@ -453,9 +453,13 @@ def visualizer(mcap_file, image_scaling, rerun_file):
                     colors = []
                     for p in radar_points:
                         if p.fields["speed"] < 0:
-                            colors.append((0, 0, int((p.fields["speed"]) * -speed_color_mult)))
+                            colors.append((255 - (int((p.fields["speed"]) * -speed_color_mult)), 
+                                           255 - (int((p.fields["speed"]) * -speed_color_mult)),
+                                           255))
                         else:
-                            colors.append((int((p.fields["speed"]) * speed_color_mult), 0, 0))
+                            colors.append((255, 
+                                           255 - (int((p.fields["speed"]) * speed_color_mult)), 
+                                           255 - (int((p.fields["speed"]) * speed_color_mult))))
                     rr.log("3d/video/points",
                            rr.Points2D(positions=centers_2d, radii=size_2d[:, 0]/2, colors=colors))
                     rr.log("3d/radar", rr.Points3D(
