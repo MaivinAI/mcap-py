@@ -1,5 +1,6 @@
 import math
 import cv2
+import av
 import argparse
 import io
 import numpy as np
@@ -8,10 +9,10 @@ import logging
 import time
 import zstandard
 # Custom message module for camera information
-from edgefirst.schemas.sensor_msgs import CameraInfo as Info
-from edgefirst.schemas.sensor_msgs import PointCloud2, PointField, PointFieldDatatype, CompressedImage
+from edgefirst.schemas.sensor_msgs import PointCloud2, PointField, PointFieldDatatype
 # Custom message module for detection
 from edgefirst.schemas.edgefirst_msgs import Mask
+from edgefirst.schemas.foxglove_msgs import CompressedVideo
 import struct
 import traceback
 import io
@@ -21,47 +22,10 @@ import time
 logging.basicConfig(level=logging.INFO)  # Set up logging configuration
 logger = logging.getLogger(__name__)  # Create a logger object
 
-rawData = None
-container = None
+rawData = io.BytesIO()
+container = av.open(rawData, format='h264', mode='r')
+cur_pos = 0
 zstd_decomp = zstandard.ZstdDecompressor()
-
-frame_id = 0
-frame_position = 0
-
-
-def get_image(message, frame_position):
-    """
-    Extracts an image frame from H264 and keep track of key and I frames
-    """
-    rawData.write(message)  # Write message data to the buffer
-    # Move the buffer position to the specified frame position
-    rawData.seek(frame_position)
-    mcap_image = None  # Initialize variable to store the image
-
-    # Iterate over packets in the container to decode frames
-    for packet in container.demux():
-        try:
-            if packet.size == 0:  # Skip empty packets
-                continue
-            # if not packet.is_keyframe:
-            #     continue
-            frame_position += packet.size  # Update frame position
-
-            for frame in packet.decode():  # Decode frames from the packet
-                # Convert the frame to RGB format and store it
-                # mcap_image = cv2.cvtColor(frame.to_ndarray(
-                #     format='rgb24'), cv2.COLOR_BGR2RGB)
-                mcap_image = frame
-
-        except Exception as e:
-            if "Errno 1094995529" not in str(e):
-                logger.warning("Unable to decode frame: %s", e)
-            else:
-                # error due to not starting with a keyframe
-                pass
-            continue
-    return mcap_image  # Return the decoded image
-
 
 # Camera matrix that produces bounding boxes in 1920x1080 pixel coordinates
 # cam_mtx = np.array([
@@ -256,8 +220,6 @@ def make_blueprint():
 
 
 def visualizer(ip_addr, image_scaling, memory_limit):
-    frame_position = 0 # Initialize frame position and ID
-    mcap_image = None  # Initialize image variables
     class_colors = [
         (128, 128, 128, 0),  # Background
         (255, 0, 0),  # Person
@@ -266,20 +228,15 @@ def visualizer(ip_addr, image_scaling, memory_limit):
     ]
 
     # Default frame dimensions
-    frame_height = 360
-    frame_width = 640
+    frame_height = 1080
+    frame_width = 1920
 
     frame_height = int(frame_height*image_scaling)
     frame_width = int(frame_width*image_scaling)
 
     try:
         rr.init("Raivin MCAP Visualizer", spawn=False)
-        # save in a file
-        # rr.save(rerun_file, default_blueprint=make_blueprint())
         rr.spawn(memory_limit=memory_limit, default_blueprint=make_blueprint()) # view live
-        # rr.serve(open_browser=False, default_blueprint=make_blueprint(),
-        #             server_memory_limit='10%')
-        # rr.connect(ip_addr)
         
         last_mask = None
         rr.log(
@@ -371,16 +328,41 @@ def visualizer(ip_addr, image_scaling, memory_limit):
             #         rr.Points2D(positions=centers_2d, radii=size_2d[:, 0]/2, colors=colors))
             rr.log("3d/radar", rr.Points3D(
                 positions=[[p.x, p.y, p.z] for p in radar_points], radii=POINT_RADIUS, colors=colors))
+
+
+        def h264_listener(message):
+            global cur_pos
+            # Get the image frame from the message
+            h264_msg = CompressedVideo.deserialize(message.value.payload)
+            h264_data = bytes(h264_msg.data)
             
-    
-        def camera_listener(message):
-            # frame_id = frame_id + 1  # Increment frame ID
-            # Deserialize the message data to get H264 frames
-            image_data = CompressedImage.deserialize(message.value.payload)
-            image = bytes(image_data.data)
-            encoded_image = rr.ImageEncoded(contents=image, format=rr.ImageFormat.JPEG) # media_type='image/jpeg') 
-            rr.log(
-                "3d/video", encoded_image)
+            rawData.write(h264_data)  # Write message data to the buffer
+            # Move the buffer position to the specified frame position
+            rawData.seek(cur_pos)
+            mcap_image = None  # Initialize variable to store the image
+
+            # Iterate over packets in the container to decode frames
+            for packet in container.demux():
+                try:
+                    if packet.size == 0:  # Skip empty packets
+                        continue
+                    cur_pos += packet.size  # Update frame position
+
+                    frames = packet.decode()
+                    if len(frames) > 0:
+                        mcap_image = frames[-1]
+
+                except Exception as e:
+                    if "Errno 1094995529" not in str(e):
+                        logger.warning("Unable to decode frame: %s", e)
+                    else:
+                        # error due to not starting with a keyframe
+                        pass
+                    continue
+
+            if mcap_image:
+                image = mcap_image.to_ndarray(format="bgr24")
+                rr.log("3d/video", rr.Image(image))
                 
         def mask_listener(message):
             msg = Mask.deserialize(message.value.payload)
@@ -395,7 +377,6 @@ def visualizer(ip_addr, image_scaling, memory_limit):
                     f"Unknown encoding type {msg.encoding} in mask")
             mask = np.asarray(mask, dtype=np.uint8)
             mask = mask.reshape((msg.height, msg.width, -1))
-            last_mask = mask
             rr.log("3d/masktensor", rr.Image(mask[:, :, 1:]))
             mask = cv2.resize(mask, (frame_width, frame_height),
                                 interpolation=cv2.INTER_LINEAR)
@@ -409,9 +390,9 @@ def visualizer(ip_addr, image_scaling, memory_limit):
 
         # Declare a subscriber on the 'rt/radar/targets' topic and print the pointcloud2 data by
         # decoding the message using the PointCloud2 schema.
-        pc2_sub = session.declare_subscriber('rt/radar/targets', pc2_listener, zenoh.Reliability.BEST_EFFORT())
-        camera_sub = session.declare_subscriber('rt/camera/jpeg', camera_listener, zenoh.Reliability.BEST_EFFORT())
-        mask_sub = session.declare_subscriber('rt/detect/mask', mask_listener, zenoh.Reliability.BEST_EFFORT())
+        pc2_sub = session.declare_subscriber('rt/radar/targets', pc2_listener)
+        camera_sub = session.declare_subscriber('rt/camera/h264', h264_listener)
+        mask_sub = session.declare_subscriber('rt/detect/mask', mask_listener)
 
 
         # The declare_subscriber runs asynchronously, so we need to block the main
@@ -419,7 +400,8 @@ def visualizer(ip_addr, image_scaling, memory_limit):
         # but an application could have its main control loop here instead.
         try:
             while True:
-                time.sleep(0.1)
+                time.sleep(0.01)
+
         except KeyboardInterrupt as e:
             pc2_sub.undeclare()
             camera_sub.undeclare()
@@ -433,8 +415,6 @@ def visualizer(ip_addr, image_scaling, memory_limit):
         tb.seek(0)
         logger.error(f"Error in visualizer: {e}\nTraceback:\n{tb.read()}")
 
-        # Main function to parse command-line arguments and start visualization
-
 
 def main():
 
@@ -442,7 +422,7 @@ def main():
         description='Process MCAP to view images with bounding boxes.')  # Create an argument parser
     parser.add_argument('-m', '--memory', type=str, default='10%',
                         help='The percentage of memory for rerun to use. Default: 10%%')  # Add model argument
-    parser.add_argument('-s', '--scale', type=float, default=.5,
+    parser.add_argument('-s', '--scale', type=float, default=0.5,
                         help='Resizing factor to view the final image 0.1-1.0. Default: 1.0')  # Add scale argument
     parser.add_argument('connect', help='IP Address and port of active rerun server to send data (IP:PORT)')
     opt = parser.parse_args()  # Parse command-line arguments
