@@ -39,7 +39,7 @@ ERROR:__main__:Did not find topic /model/boxes2d
 ERROR:__main__:Cannot view no_model_boxes2d.mcap without topic /model/boxes2d.  Exiting
 ```
 Otherwise, a successful run should generate the popup,  
-![Foxglove extension view](static/viewer.png)
+![Foxglove extension view](static/viewer.png)  
 and the following messages:
 ```bash
 $ python .\viewer.py .\test.mcap   
